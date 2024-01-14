@@ -7,23 +7,34 @@
 
 import UIKit
 
-class TabViewController: UITabBarController {
+class TabViewController: UITabBarController, UITabBarControllerDelegate {
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // Do any additional setup after loading the view.
+        self.delegate = self
+        
+        let recipeView = ListTableViewController()
+        let likedView = LikedTableViewController()
+        
+        recipeView.tabBarItem = UITabBarItem(title: "Recipes", image: UIImage(systemName: "list.bullet.rectangle"), tag: 0)
+        likedView.tabBarItem = UITabBarItem(title: "Favorite", image: UIImage(systemName: "heart.fill"), tag: 1)
+        
+        self.viewControllers = [ recipeView, likedView]
+        
+        navigationItem.title = "Recipes"
     }
     
-
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using segue.destination.
-        // Pass the selected object to the new view controller.
+    func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
+        switch tabBarController.selectedIndex {
+        case 0:
+            navigationItem.title = "Recipes"
+        case 1:
+            navigationItem.title = "Favorite"
+        default:
+            break
+        }
     }
-    */
+
 
 }
