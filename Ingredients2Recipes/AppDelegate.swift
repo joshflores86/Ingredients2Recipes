@@ -7,16 +7,22 @@
 
 import UIKit
 import CoreData
+import Firebase
+import FirebaseFirestore
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
-
+    
     static var shared = AppDelegate()
     var window: UIWindow?
+    static var viewModel = RecipeViewModel()
     
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Override point for customization after application
+        FirebaseApp.configure()
+        print("FireBase Configured")
+        
         window = UIWindow(frame: UIScreen.main.bounds)
         window?.makeKeyAndVisible()
         window?.backgroundColor = .systemBackground
@@ -26,10 +32,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 .font: UIFont.systemFont(ofSize: 28, weight: .bold)
             ]
         UINavigationBar.appearance().titleTextAttributes = titleSize
+        
+        DispatchQueue.global(qos: .background).async {
+            _ = AppDelegate.persistentContainer
+            print("Persistent container initialized")
+            
+        }
+        
         print("Finish")
+
         return true
     }
-
+    
 
     // MARK: UISceneSession Lifecycle
 

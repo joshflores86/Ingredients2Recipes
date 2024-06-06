@@ -7,31 +7,48 @@
 
 import UIKit
 import CoreData
+import Firebase
 
-class RecipeViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+class RecipeViewController: UIViewController/*, UITableViewDataSource, UITableViewDelegate*/ {
     
     let context = AppDelegate.persistentContainer.viewContext
     let recipeRequest = NSFetchRequest<RecipeEntity>(entityName: "RecipeEntity")
     let ingredientRequest = NSFetchRequest<IngredientEntity>(entityName: "IngredientEntity")
     var viewModel = RecipeViewModel()
     var name: String = ""
+//    var onlineName: String = ""
     var instruction: String = ""
+//    var onlineInstruction: String = ""
+
     var ingredient: [IngredientModel] = []
+    var onlineIngredient: [OnlineIngredientModel] = []
+
     var hours: Int16 = 0
+    var onlineHours: Int = 0
+
     var minutes: Int16 = 0
-    var selectedRow: Int?
+    var onlineMinutes: Int = 0
+
+    var selectedRow: Int
     var liked: Bool?
+    
+    private var fromOnline: Bool!
     
 
     
-    init( name: String, instruction: String, ingredient: [IngredientModel], hours: Int16, minutes: Int16, liked: Bool) {
+    init( name: String, instruction: String, ingredient: [IngredientModel], onlineIngredient: [OnlineIngredientModel], hours: Int16, onlineHours: Int, minutes: Int16, onlineMinutes: Int, selectedRow: Int, liked: Bool, fromOnline: Bool) {
         
         self.name = name
         self.instruction = instruction
         self.ingredient = ingredient
+        self.onlineIngredient = onlineIngredient
         self.hours = hours
+        self.onlineHours = onlineHours
         self.minutes = minutes
+        self.onlineMinutes = onlineMinutes
+        self.selectedRow = selectedRow
         self.liked = liked
+        self.fromOnline = fromOnline
         
         super.init(nibName: nil, bundle: nil)
         
@@ -63,24 +80,35 @@ class RecipeViewController: UIViewController, UITableViewDataSource, UITableView
     lazy var ingredientTitle: UILabel = {
        let title = UILabel()
         title.text = "Ingredients:"
-        title.font = .preferredFont(forTextStyle: .largeTitle)
+        title.font = .monospacedSystemFont(ofSize: 20, weight: .heavy)
         title.translatesAutoresizingMaskIntoConstraints = false
         
         return title
     }()
     
-    lazy var ingredientsList: UITableView = {
-       let recipes = UITableView()
-        recipes.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
-        recipes.separatorStyle = .none
+    lazy var ingredientsList: UILabel = {
+       let recipes = UILabel()
+        recipes.numberOfLines = 0
         recipes.translatesAutoresizingMaskIntoConstraints = false
+        var ingredientString = ""
+        if ingredient.count != 0 {
+            for ingredients in ingredient {
+                ingredientString += "• \(ingredients.quantity) \(ingredients.unit.rawValue == "N/A" ? "" : ingredients.unit.rawValue) \(ingredients.ingredients)\n "
+            }
+            recipes.text = ingredientString
+        }else{
+            for ingredients in onlineIngredient {
+                ingredientString += "• \(ingredients.quantity) \(ingredients.unit.rawValue == "N/A" ? "" : ingredients.unit.rawValue) \(ingredients.ingredients)\n "
+            }
+            recipes.text = ingredientString
+        }
         return recipes
     }()
     
     lazy var instrucTitle: UILabel = {
         let title = UILabel()
         title.text = "Instructions:"
-        title.font = .preferredFont(forTextStyle: .largeTitle)
+        title.font = .monospacedSystemFont(ofSize: 20, weight: .heavy)
         title.translatesAutoresizingMaskIntoConstraints = false
         return title
     }()
@@ -90,12 +118,35 @@ class RecipeViewController: UIViewController, UITableViewDataSource, UITableView
         let instructs = UILabel()
         instructs.text = instruction
         instructs.font = .monospacedSystemFont(ofSize: 15, weight: .medium)
+        instructs.sizeToFit()
+        instructs.center = CGPoint(x: instrucContainerView.bounds.midX, y: instrucContainerView.bounds.midY)
         instructs.numberOfLines = 0
         instructs.textAlignment = .left
-//        instructs.lineBreakMode = .byWordWrapping
+        instructs.lineBreakMode = .byWordWrapping
         instructs.translatesAutoresizingMaskIntoConstraints = false
        
         return instructs
+    }()
+    
+    lazy var cookTimeTitle: UILabel = {
+       let cookTitle = UILabel()
+        cookTitle.text = "Cook Time:"
+        cookTitle.font = .monospacedSystemFont(ofSize: 20, weight: .heavy)
+        cookTitle.translatesAutoresizingMaskIntoConstraints = false
+        return cookTitle
+    }()
+    
+    lazy var cookTime: UILabel = {
+        let time = UILabel()
+        if hours == 0 && minutes == 0 {
+            time.text = "\(onlineHours) hours \(onlineMinutes) minutes"
+            time.translatesAutoresizingMaskIntoConstraints = false
+        }else{
+            time.text = "\(hours) hours \(minutes) minutes"
+            time.translatesAutoresizingMaskIntoConstraints = false
+        }
+        
+        return time
     }()
     
     let scrollView: UIScrollView = {
@@ -105,21 +156,49 @@ class RecipeViewController: UIViewController, UITableViewDataSource, UITableView
         return scroll
     }()
     
+    let containerView: UIView = {
+       let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+    
+    let innerView: UIView = {
+        let view = UIView()
+        
+        view.layer.borderColor = UIColor.lightGray.cgColor
+        view.layer.borderWidth = 0.5
+        view.layer.cornerRadius = 8.0
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+    
+    let instructScrollView: UIScrollView = {
+        let instructScroll = UIScrollView()
+        instructScroll.translatesAutoresizingMaskIntoConstraints = false
+        instructScroll.indicatorStyle = .black
+        return instructScroll
+    }()
+    
+    let instrucContainerView: UIView = {
+        let margin: CGFloat = 10
+        let instructView = UIView()
+        instructView.frame = CGRect(x: 0, y: 0, width: instructView.frame.width + margin * 2, height: instructView.frame.height + margin * 2)
+        instructView.translatesAutoresizingMaskIntoConstraints = false
+        return instructView
+    }()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
         self.navigationItem.title = name
         self.navigationItem.rightBarButtonItem = barButtonItem
-        ingredientsList.delegate = self
-        ingredientsList.dataSource = self
+        self.innerView.frame = instrucContainerView.frame
         
         setLikedButton()
-        
         view.addSubview(scrollView)
-        
-
+        scrollView.addSubview(containerView)
         scrollViewConstraint()
-        
+         
     }
     
     func titleConstraint() {
@@ -132,61 +211,84 @@ class RecipeViewController: UIViewController, UITableViewDataSource, UITableView
     }
     
     func scrollViewConstraint() {
-        let leading = scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10)
-        let top = scrollView.topAnchor.constraint(equalTo: view.topAnchor, constant: 10)
-        let width = scrollView.widthAnchor.constraint(equalToConstant: 350)
-        let bottom = scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -20)
+        let leading = scrollView.leadingAnchor.constraint(equalTo: self.view.leadingAnchor)
+        let top = scrollView.topAnchor.constraint(equalTo: self.view.topAnchor)
+        let width = scrollView.widthAnchor.constraint(equalTo: self.view.widthAnchor)
+        let bottom = scrollView.bottomAnchor.constraint(equalTo: self.view.bottomAnchor)
+        
         
         NSLayoutConstraint.activate([leading,top,width,bottom])
         
-        scrollView.addSubview(ingredientTitle)
-        scrollView.addSubview(ingredientsList)
-        scrollView.addSubview(instrucTitle)
-        scrollView.addSubview(instructions)
+        containerView.leadingAnchor.constraint(equalTo: self.scrollView.leadingAnchor).isActive = true
+        containerView.topAnchor.constraint(equalTo: self.scrollView.topAnchor).isActive = true
+        containerView.trailingAnchor.constraint(equalTo: self.scrollView.trailingAnchor).isActive = true
+        containerView.widthAnchor.constraint(equalTo: self.scrollView.widthAnchor).isActive = true
+        containerView.bottomAnchor.constraint(equalTo: self.scrollView.bottomAnchor).isActive = true
+        containerView.heightAnchor.constraint(equalTo: self.scrollView.heightAnchor, multiplier: 1).isActive = true
+
         
-        ingredientTitle.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 0).isActive = true
-        ingredientTitle.topAnchor.constraint(equalTo: scrollView.safeAreaLayoutGuide.topAnchor, constant: 10).isActive = true
-        ingredientTitle.widthAnchor.constraint(equalTo: scrollView.widthAnchor).isActive = true
+        containerView.addSubview(ingredientTitle)
+        containerView.addSubview(ingredientsList)
+        containerView.addSubview(instrucTitle)
+        containerView.addSubview(innerView)
+        innerView.addSubview(instructScrollView)
+        instructScrollView.addSubview(instrucContainerView)
+        instrucContainerView.addSubview(instructions)
+        containerView.addSubview(cookTimeTitle)
+        containerView.addSubview(cookTime)
+        
+        ingredientTitle.leadingAnchor.constraint(equalTo: self.containerView.leadingAnchor, constant: 10).isActive = true
+        ingredientTitle.topAnchor.constraint(equalTo: self.containerView.safeAreaLayoutGuide.topAnchor, constant: 10).isActive = true
+        ingredientTitle.widthAnchor.constraint(equalTo: self.containerView.widthAnchor).isActive = true
         ingredientTitle.heightAnchor.constraint(equalToConstant: 40).isActive = true
         
-        ingredientsList.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 0).isActive = true
-        ingredientsList.topAnchor.constraint(equalTo: ingredientTitle.bottomAnchor, constant: 5).isActive = true
+        ingredientsList.leadingAnchor.constraint(equalTo: self.containerView.leadingAnchor, constant: 5).isActive = true
+        ingredientsList.topAnchor.constraint(equalTo: self.ingredientTitle.bottomAnchor, constant: 5).isActive = true
         ingredientsList.heightAnchor.constraint(equalToConstant: 200).isActive = true
-        ingredientsList.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -10).isActive = true
+        ingredientsList.trailingAnchor.constraint(equalTo: self.containerView.trailingAnchor, constant: -5).isActive = true
         
-        instrucTitle.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 0).isActive = true
-        instrucTitle.topAnchor.constraint(equalTo: ingredientsList.bottomAnchor, constant: 10).isActive = true
-        instrucTitle.widthAnchor.constraint(equalTo: scrollView.widthAnchor).isActive = true
+        instrucTitle.leadingAnchor.constraint(equalTo: self.containerView.leadingAnchor, constant: 10).isActive = true
+        instrucTitle.topAnchor.constraint(equalTo: self.ingredientsList.bottomAnchor, constant: 10).isActive = true
+        instrucTitle.widthAnchor.constraint(equalTo: self.containerView.widthAnchor).isActive = true
         instrucTitle.heightAnchor.constraint(equalToConstant: 30).isActive = true
+        
+        innerView.leadingAnchor.constraint(equalTo: self.containerView.leadingAnchor, constant: 5).isActive = true
+        innerView.topAnchor.constraint(equalTo: self.instrucTitle.bottomAnchor, constant: 10).isActive = true
+        innerView.trailingAnchor.constraint(equalTo: self.containerView.trailingAnchor, constant: -5).isActive = true
+//        innerView.heightAnchor.constraint(equalToConstant: 480).isActive = true
+        
+        instructScrollView.leadingAnchor.constraint(equalTo: self.innerView.leadingAnchor).isActive = true
+        instructScrollView.topAnchor.constraint(equalTo: self.innerView.topAnchor).isActive = true
+        instructScrollView.widthAnchor.constraint(equalTo: self.innerView.widthAnchor).isActive = true
+        instructScrollView.bottomAnchor.constraint(equalTo: self.innerView.bottomAnchor).isActive = true
+        
+        instrucContainerView.leadingAnchor.constraint(equalTo: self.instructScrollView.leadingAnchor).isActive = true
+        instrucContainerView.topAnchor.constraint(equalTo: self.instructScrollView.topAnchor).isActive = true
+        instrucContainerView.widthAnchor.constraint(equalTo: self.instructScrollView.widthAnchor).isActive = true
+        instrucContainerView.bottomAnchor.constraint(equalTo: self.instructScrollView.bottomAnchor).isActive = true
+        instrucContainerView.heightAnchor.constraint(equalTo: self.instructScrollView.heightAnchor, multiplier: 2).isActive = true
 
-        instructions.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 10).isActive = true
-        instructions.topAnchor.constraint(equalTo: instrucTitle.bottomAnchor, constant: 10).isActive = true
-        instructions.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -10).isActive = true
-        instructions.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -20).isActive = true
+        instructions.leadingAnchor.constraint(equalTo: self.instrucContainerView.leadingAnchor, constant: 5).isActive = true
+        instructions.topAnchor.constraint(equalTo: self.instrucContainerView.topAnchor, constant: 5).isActive = true
+        instructions.heightAnchor.constraint(equalTo: self.instrucContainerView.heightAnchor, constant: -5).isActive = true
+        instructions.widthAnchor.constraint(equalTo: self.instrucContainerView.widthAnchor, constant: -10).isActive = true
+        
+        cookTimeTitle.leadingAnchor.constraint(equalTo: self.containerView.leadingAnchor, constant: 5).isActive = true
+        cookTimeTitle.topAnchor.constraint(equalTo: self.innerView.bottomAnchor, constant: 10).isActive = true
+        cookTimeTitle.widthAnchor.constraint(equalToConstant: 175).isActive = true
+        cookTimeTitle.heightAnchor.constraint(equalToConstant: 30).isActive = true
+
+        cookTime.leadingAnchor.constraint(equalTo: self.containerView.leadingAnchor, constant: 10).isActive = true
+        cookTime.topAnchor.constraint(equalTo: self.cookTimeTitle.bottomAnchor, constant: 10).isActive = true
+        cookTime.widthAnchor.constraint(equalToConstant: 150).isActive = true
+        cookTime.heightAnchor.constraint(equalToConstant: 30).isActive = true
     }
     
-    
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return ingredient.count
-    }
-    
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-        let ingredients = viewModel.inHouseRecipe[indexPath.row].ingredient
-        
-        selectedRow = indexPath.row
-        
-        let ingredientString = ingredients.map { ingredient in
-            return "* \(ingredient.quantity) \(ingredient.unit.rawValue == "N/A" ? "" : ingredient.unit.rawValue) \(ingredient.ingredients) "
-        }
-        
-        let jointStrings = ingredientString.joined(separator: "\n")
-        
-        cell.textLabel?.numberOfLines = 0
-        cell.textLabel?.text = jointStrings
-        
-        return cell
-        
+    func setLikedButton() {
+        let liked = UserDefaults.standard.bool(forKey: "Likedrecipe_\(name)")
+        likeButton.isSelected = liked
+        likeButton.tintColor = liked ? UIColor.red : UIColor.systemBlue
+        likeButton.setImage(liked ? UIImage(systemName: "heart.fill") : UIImage(systemName: "heart"), for: .normal)
     }
     
     @objc func favorited() {
@@ -198,14 +300,27 @@ class RecipeViewController: UIViewController, UITableViewDataSource, UITableView
             likeButton.setImage(UIImage(systemName: "heart.fill"), for: .selected)
             likeButton.tintColor = UIColor.red
             UserDefaults.standard.setValue(true, forKey: "Likedrecipe_\(name)")
-            let recipe = RecipeModel(name: name,
-                                     ingredient: ingredient,
-                                     instructions: instruction,
-                                     timeHours: hours,
-                                     timeMinute: minutes,
-                                     favorite: liked ?? false)
-            viewModel.saveRecipe(recipe)
-            print("item has been liked")
+            if fromOnline {
+                let recipe = OnlineRecipeModel(name: name,
+                                               ingredient: onlineIngredient,
+                                               instructions: instructions.text ?? "",
+                                               timeHours: onlineHours,
+                                               timeMinute: onlineMinutes,
+                                               favorite: liked ?? false)
+                viewModel.saveOnlineRecipe(recipe)
+                print("item has been liked")
+            }else{
+                
+                let recipe = RecipeModel(name: name,
+                                         ingredient: ingredient,
+                                         instructions: instruction,
+                                         timeHours: hours,
+                                         timeMinute: minutes,
+                                         favorite: liked ?? false)
+                viewModel.saveRecipe(recipe)
+                print("item has been liked")
+            }
+            
 //            setLikedButton()
         }else{
             likeButton.setImage(UIImage(systemName: "heart"), for: .normal)
@@ -230,12 +345,7 @@ class RecipeViewController: UIViewController, UITableViewDataSource, UITableView
     
     
     
-    func setLikedButton() {
-        let liked = UserDefaults.standard.bool(forKey: "Likedrecipe_\(name)")
-        likeButton.isSelected = liked
-        likeButton.tintColor = liked ? UIColor.red : UIColor.systemBlue
-        likeButton.setImage(liked ? UIImage(systemName: "heart.fill") : UIImage(systemName: "heart"), for: .normal)
-    }
+    
     
 }
 

@@ -6,8 +6,9 @@
 //
 
 import Foundation
+import UIKit
 
-class RecipeModel: Identifiable {
+class RecipeModel: Identifiable, Codable {
     var id = UUID().uuidString
     var name: String
     var ingredient: [IngredientModel]
@@ -28,3 +29,7 @@ class RecipeModel: Identifiable {
     
 }
 
+struct IngredientEntry {
+    var textField: UITextField
+    var picker: UITextField
+}

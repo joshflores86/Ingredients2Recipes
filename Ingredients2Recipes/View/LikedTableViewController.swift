@@ -7,6 +7,7 @@
 
 import UIKit
 import CoreData
+import Firebase
 
 class LikedTableViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
@@ -22,6 +23,17 @@ class LikedTableViewController: UIViewController, UITableViewDelegate, UITableVi
        return likedList
     }()
     
+    var background: CAGradientLayer = {
+       let background = CAGradientLayer()
+        background.colors = [
+            UIColor.color2.cgColor,
+            UIColor.color1.cgColor
+        ]
+        background.locations = [0.2, 0.8]
+        background.startPoint = CGPoint(x: 1.0, y: 0.6)
+        background.endPoint = CGPoint(x: 0.9, y: 0.8)
+        return background
+    }()
 
     override func viewWillAppear(_ animated: Bool) {
             super.viewWillAppear(animated)
@@ -30,7 +42,11 @@ class LikedTableViewController: UIViewController, UITableViewDelegate, UITableVi
         tableView.dataSource = self
         
         self.view.addSubview(tableView)
+        self.view.layer.insertSublayer(background, at: 0)
+        background.frame = self.view.bounds
         tableViewConstraint()
+        
+        tableView.backgroundColor = .clear
         
         tableView.reloadData()
         
@@ -54,7 +70,10 @@ class LikedTableViewController: UIViewController, UITableViewDelegate, UITableVi
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let recipe = viewModel.fetchRequest()
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+        
         cell.textLabel?.text = recipe[indexPath.row].name
+        
+        cell.backgroundColor = .clear
         
         let chevron: UIImageView = {
            let label = UIImageView()
@@ -94,12 +113,18 @@ class LikedTableViewController: UIViewController, UITableViewDelegate, UITableVi
         navigationController?.pushViewController(RecipeViewController(name: recipe[indexPath.row].name,
                                                                       instruction: recipe[indexPath.row].instructions,
                                                                       ingredient: recipe[indexPath.row].ingredient,
+                                                                      onlineIngredient: [],
                                                                       hours: recipe[indexPath.row].timeHours,
+                                                                      onlineHours: 0,
                                                                       minutes: recipe[indexPath.row].timeMinute,
-                                                                      liked: recipe[indexPath.row].favorite),
+                                                                      onlineMinutes: 0,
+                                                                      selectedRow: indexPath.row,
+                                                                      liked: recipe[indexPath.row].favorite, 
+                                                                      fromOnline: false),
                                                  animated: true)
         
     }
     
     
 }
+

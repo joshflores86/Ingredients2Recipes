@@ -6,37 +6,22 @@
 //
 
 import Foundation
+import FirebaseFirestoreSwift
+import Firebase
 
-class IngredientModel/*: NSObject, NSCoding, NSSecureCoding*/ {
-    
-    
-    
-    static var supportsSecureCoding: Bool {
-        return true
-    }
+class IngredientModel: Codable {
     
     var ingredients: String
     var unit: UnitOfMeasure
-    var quantity: Double
+    var quantity: Int64
     
-    init(ingredients: String, unit: UnitOfMeasure, quantity: Double) {
+    init(ingredients: String, unit: UnitOfMeasure, quantity: Int64) {
         self.ingredients = ingredients
         self.unit = unit
         self.quantity = quantity
     }
-    
-//    required init(coder aDecoder: NSCoder) {
-//        self.ingredient = aDecoder.decodeObject(forKey: "ingredient")
-//        self.unit = UnitOfMeasure(rawValue: aDecoder)
-//    }
-//    
-//    func encode(with coder: NSCoder) {
-//        coder.encode(ingredient, forKey: "ingredient")
-//        coder.encode(unit, forKey: "unit")
-//        coder.encode(quantity, forKey: "quantity")
-//    }
-    
-    enum UnitOfMeasure: String {
+        
+    enum UnitOfMeasure: String, Codable {
         case oz = "oz"
         case cup = "cup"
         case gallon = "gal"
@@ -46,6 +31,7 @@ class IngredientModel/*: NSObject, NSCoding, NSSecureCoding*/ {
         case grams = "gm"
         case pint = "pt"
         case none = "N/A"
+        case qty = "qty"
     }
     
 }
